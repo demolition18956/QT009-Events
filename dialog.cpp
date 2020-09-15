@@ -9,9 +9,9 @@ Dialog::Dialog(QWidget *parent) :
 {
     ui->setupUi(this);
     ui->timeLabel->setText("0");
-    timer = new QTimer(this);   // allocates timer
-    timer->setInterval(1000);   // sets timer interval
-                                // timer not started yet
+    updateTimer = QObject::startTimer(1000); // Set off Event every
+                                             // 1000 msec (returns
+                                             // timer id)
     paused = true;
 
     connect(ui->startButton, SIGNAL(clicked()), this, SLOT(initiateTimer()));
@@ -19,7 +19,10 @@ Dialog::Dialog(QWidget *parent) :
     connect(ui->clearButton, SIGNAL(clicked()), this, SLOT(clearTimer()));
     connect(ui->quitButton, SIGNAL(clicked()), this, SLOT(accept()));
 
-    connect(timer, SIGNAL(timeout()), this, SLOT(updateDisplay()));  // uses signal/slot connections
+    QTimerEvent* event = new QTimerEvent(updateTimer);  // returns Timer Event associated
+                                                        // id
+
+    QCoreApplication::postEvent(this, event);   // Manually add to event queue
 }
 
 Dialog::~Dialog()
@@ -27,40 +30,47 @@ Dialog::~Dialog()
     delete ui;
 }
 
-void Dialog::updateDisplay()
+bool Dialog::event(QEvent *someEvent)
 {
-    if (!paused)
+    if (!someEvent) return QObject::event(someEvent); // make sure event exists
+    if (someEvent->type() == QEvent::Timer) // if the custom timer created
     {
-        bool ok;
-        int n = ui->timeLabel->text().toInt(&ok) + 1; // make sure value is an integer
-                                                      // answer found in "ok"
-        if (ok)
-        {
-            ui->timeLabel->setText(QString::number(n));
-            qDebug() << "Updating display";
+        QTimerEvent* timerEvent = static_cast<QTimerEvent*>(someEvent);
+        if (timerEvent->timerId() == updateTimer){
+            if (!paused)
+            {
+                bool ok;
+                int n = ui->timeLabel->text().toInt(&ok) + 1; // make sure value is an integer
+                                                              // answer found in "ok"
+                if (ok)
+                {
+                    ui->timeLabel->setText(QString::number(n));
+                    qDebug() << "Updating display";
+                }
+                else {
+                    ui->timeLabel->setText("");
+                    qDebug() << "Dialog::eventTimer(): Unknown error";
+                }
+            }
+            else {
+                qDebug() << "Timer paused";
+            }
         }
-        else {
-            ui->timeLabel->setText("");
-            qDebug() << "Dialog::eventTimer(): Unknown error";
-        }
+
     }
-    else {
-        qDebug() << "Timer paused";
-    }
+    return QObject::event(someEvent);
 }
 
 void Dialog::initiateTimer()
 {
     qDebug() << "Initiating Timer";
     paused = false;
-    timer->start();
 }
 
 void Dialog::pauseTimer()
 {
     qDebug() << "Pausing Timer";
     paused = true;
-    timer->stop();
 }
 
 void Dialog::clearTimer()
@@ -68,5 +78,4 @@ void Dialog::clearTimer()
     qDebug() << "Clearing Timer";
     ui->timeLabel->setText("0");
     paused = true;
-    timer->stop();
 }
