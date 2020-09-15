@@ -15,19 +15,17 @@ public:
     explicit Dialog(QWidget *parent = nullptr);
     ~Dialog();
 
-protected:
-    void timerEvent(QTimerEvent* someEvent); // Timer Specific
-                                             // Event Handler
-
 private:
     Ui::Dialog *ui;
     int updateTimer;
     bool paused;
+    QTimer* timer;
 
 private slots:
     void initiateTimer();
     void pauseTimer();
     void clearTimer();
+    void updateDisplay();
 };
 
 #endif // DIALOG_H
